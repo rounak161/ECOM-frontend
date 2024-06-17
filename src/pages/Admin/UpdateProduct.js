@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import Layout from "./../../components/Layout/Layout";
 import AdminMenu from "./../../components/Layout/AdminMenu";
 import toast from "react-hot-toast";
-import axios from "axios";
 import { Select } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 const { Option } = Select;
@@ -20,38 +19,55 @@ const UpdateProduct = () => {
   const [photo, setPhoto] = useState("");
   const [id, setId] = useState("");
 
-  //get single product
+  // Fetch single product details
   const getSingleProduct = async () => {
     try {
-      const { data } = await axios.get(
-        `/api/v1/product/get-product/${params.slug}`
-      );
-      setName(data.product.name);
-      setId(data.product._id);
-      setDescription(data.product.description);
-      setPrice(data.product.price);
-      setPrice(data.product.price);
-      setQuantity(data.product.quantity);
-      setShipping(data.product.shipping);
-      setCategory(data.product.category._id);
+      const response = await fetch(`/api/v1/product/get-product/${params.slug}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const { product } = data;
+          setName(product.name);
+          setId(product._id);
+          setDescription(product.description);
+          setPrice(product.price);
+          setQuantity(product.quantity);
+          setShipping(product.shipping ? "1" : "0"); // Convert boolean to string
+          setCategory(product.category._id);
+        } else {
+          toast.error(data.message || "Failed to fetch product details");
+        }
+      } else {
+        throw new Error("Failed to fetch product details");
+      }
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching product:", error);
+      toast.error("Something went wrong while fetching product details");
     }
   };
+
   useEffect(() => {
     getSingleProduct();
     //eslint-disable-next-line
   }, []);
-  //get all category
+
+  // Fetch all categories
   const getAllCategory = async () => {
     try {
-      const { data } = await axios.get("/api/v1/category/get-category");
-      if (data?.success) {
-        setCategories(data?.category);
+      const response = await fetch("/api/v1/category/get-category");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCategories(data.category);
+        } else {
+          toast.error(data.message || "Failed to fetch categories");
+        }
+      } else {
+        throw new Error("Failed to fetch categories");
       }
     } catch (error) {
-      console.log(error);
-      toast.error("Something wwent wrong in getting catgeory");
+      console.error("Error fetching categories:", error);
+      toast.error("Something went wrong while fetching categories");
     }
   };
 
@@ -59,7 +75,7 @@ const UpdateProduct = () => {
     getAllCategory();
   }, []);
 
-  //create product function
+  // Update product
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -68,41 +84,61 @@ const UpdateProduct = () => {
       productData.append("description", description);
       productData.append("price", price);
       productData.append("quantity", quantity);
-      photo && productData.append("photo", photo);
+      if (photo) {
+        productData.append("photo", photo);
+      }
       productData.append("category", category);
-      const { data } = axios.put(
-        `/api/v1/product/update-product/${id}`,
-        productData
-      );
-      if (data?.success) {
-        toast.error(data?.message);
+      productData.append("shipping", shipping === "1" ? true : false); // Convert string to boolean
+
+      const response = await fetch(`/api/v1/product/update-product/${id}`, {
+        method: "PUT",
+        body: productData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          toast.success("Product updated successfully");
+          navigate("/dashboard/admin/products");
+        } else {
+          toast.error(data.message || "Failed to update product");
+        }
       } else {
-        toast.success("Product Updated Successfully");
-        navigate("/dashboard/admin/products");
+        throw new Error("Failed to update product");
       }
     } catch (error) {
-      console.log(error);
-      toast.error("something went wrong");
+      console.error("Error updating product:", error);
+      toast.error("Something went wrong while updating product");
     }
   };
 
-  //delete a product
+  // Delete product
   const handleDelete = async () => {
     try {
-      let answer = window.prompt("Are You Sure want to delete this product ? ");
+      let answer = window.confirm("Are you sure you want to delete this product?");
       if (!answer) return;
-      const { data } = await axios.delete(
-        `/api/v1/product/delete-product/${id}`
-      );
-      toast.success("Product DEleted Succfully");
-      navigate("/dashboard/admin/products");
+
+      const response = await fetch(`/api/v1/product/delete-product/${id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          toast.success("Product deleted successfully");
+          navigate("/dashboard/admin/products");
+        } else {
+          toast.error(data.message || "Failed to delete product");
+        }
+      } else {
+        throw new Error("Failed to delete product");
+      }
     } catch (error) {
-      console.log(error);
-      toast.error("Something went wrong");
+      console.error("Error deleting product:", error);
+      toast.error("Something went wrong while deleting product");
     }
   };
+
   return (
-    <Layout title={"Dashboard - Create Product"}>
+    <Layout title={"Dashboard - Update Product"}>
       <div className="container-fluid m-3 p-3">
         <div className="row">
           <div className="col-md-3">
@@ -122,7 +158,7 @@ const UpdateProduct = () => {
                 }}
                 value={category}
               >
-                {categories?.map((c) => (
+                {categories.map((c) => (
                   <Option key={c._id} value={c._id}>
                     {c.name}
                   </Option>
@@ -165,16 +201,15 @@ const UpdateProduct = () => {
                 <input
                   type="text"
                   value={name}
-                  placeholder="write a name"
+                  placeholder="Write a name"
                   className="form-control"
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="mb-3">
                 <textarea
-                  type="text"
                   value={description}
-                  placeholder="write a description"
+                  placeholder="Write a description"
                   className="form-control"
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -184,7 +219,7 @@ const UpdateProduct = () => {
                 <input
                   type="number"
                   value={price}
-                  placeholder="write a Price"
+                  placeholder="Write a price"
                   className="form-control"
                   onChange={(e) => setPrice(e.target.value)}
                 />
@@ -193,7 +228,7 @@ const UpdateProduct = () => {
                 <input
                   type="number"
                   value={quantity}
-                  placeholder="write a quantity"
+                  placeholder="Write a quantity"
                   className="form-control"
                   onChange={(e) => setQuantity(e.target.value)}
                 />
@@ -201,14 +236,14 @@ const UpdateProduct = () => {
               <div className="mb-3">
                 <Select
                   bordered={false}
-                  placeholder="Select Shipping "
+                  placeholder="Select shipping"
                   size="large"
                   showSearch
                   className="form-select mb-3"
                   onChange={(value) => {
                     setShipping(value);
                   }}
-                  value={shipping ? "yes" : "No"}
+                  value={shipping === "1" ? "Yes" : "No"}
                 >
                   <Option value="0">No</Option>
                   <Option value="1">Yes</Option>

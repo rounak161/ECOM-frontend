@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import Layout from "./../../components/Layout/Layout";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import "../../styles/AuthStyles.css";
+
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -16,29 +16,45 @@ const Register = () => {
   // form function
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Simple client-side validation
+    if (!name || !email || !password || !phone || !address || !answer) {
+      toast.error("All fields are required");
+      return;
+    }
+
     try {
-      const res = await axios.post("/api/v1/auth/register", {
-        name,
-        email,
-        password,
-        phone,
-        address,
-        answer,
+      const response = await fetch("/api/v1/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          phone,
+          address,
+          answer,
+        }),
       });
-      if (res && res.data.success) {
-        toast.success(res.data && res.data.message);
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success(data.message);
         navigate("/login");
       } else {
-        toast.error(res.data.message);
+        toast.error(data.message || "Registration failed");
       }
     } catch (error) {
-      console.log(error);
+      console.error("Registration error:", error);
       toast.error("Something went wrong");
     }
   };
 
   return (
-    <Layout title="Register - Ecommer App">
+    <Layout title="Register - Ecommerce App">
       <div className="form-container" style={{ minHeight: "90vh" }}>
         <form onSubmit={handleSubmit}>
           <h4 className="title">REGISTER FORM</h4>
@@ -61,7 +77,7 @@ const Register = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="form-control"
               id="exampleInputEmail1"
-              placeholder="Enter Your Email "
+              placeholder="Enter Your Email"
               required
             />
           </div>

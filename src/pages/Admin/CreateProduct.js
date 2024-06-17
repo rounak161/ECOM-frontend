@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import Layout from "./../../components/Layout/Layout";
 import AdminMenu from "./../../components/Layout/AdminMenu";
 import toast from "react-hot-toast";
-import axios from "axios";
-import { Select } from "antd";
+import { Select, Modal } from "antd";
 import { useNavigate } from "react-router-dom";
 const { Option } = Select;
 
@@ -16,26 +15,32 @@ const CreateProduct = () => {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("");
   const [shipping, setShipping] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(null); // Changed to null initially
 
-  //get all category
-  const getAllCategory = async () => {
+  // Fetch all categories
+  const getAllCategories = async () => {
     try {
-      const { data } = await axios.get("/api/v1/category/get-category");
+      const response = await fetch("/api/v1/category/get-category");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
       if (data?.success) {
         setCategories(data?.category);
+      } else {
+        toast.error(data?.message);
       }
     } catch (error) {
-      console.log(error);
-      toast.error("Something wwent wrong in getting catgeory");
+      console.error("Error fetching categories:", error);
+      toast.error("Something went wrong in getting categories");
     }
   };
 
   useEffect(() => {
-    getAllCategory();
+    getAllCategories();
   }, []);
 
-  //create product function
+  // Handle form submission
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -44,21 +49,37 @@ const CreateProduct = () => {
       productData.append("description", description);
       productData.append("price", price);
       productData.append("quantity", quantity);
-      productData.append("photo", photo);
       productData.append("category", category);
-      const { data } = axios.post(
-        "/api/v1/product/create-product",
-        productData
-      );
+      productData.append("shipping", shipping);
+      productData.append("photo", photo); // Append the photo file
+
+      const response = await fetch("/api/v1/product/create-product", {
+        method: "POST",
+        body: productData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       if (data?.success) {
-        toast.error(data?.message);
-      } else {
-        toast.success("Product Created Successfully");
+        toast.success("Product created successfully");
         navigate("/dashboard/admin/products");
+      } else {
+        toast.error(data?.message);
       }
     } catch (error) {
-      console.log(error);
-      toast.error("something went wrong");
+      console.error("Error creating product:", error);
+      toast.error("Something went wrong");
+    }
+  };
+
+  // Handle file upload change
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhoto(file);
     }
   };
 
@@ -95,7 +116,7 @@ const CreateProduct = () => {
                     type="file"
                     name="photo"
                     accept="image/*"
-                    onChange={(e) => setPhoto(e.target.files[0])}
+                    onChange={handleFileChange}
                     hidden
                   />
                 </label>
@@ -116,26 +137,24 @@ const CreateProduct = () => {
                 <input
                   type="text"
                   value={name}
-                  placeholder="write a name"
+                  placeholder="Enter product name"
                   className="form-control"
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="mb-3">
                 <textarea
-                  type="text"
                   value={description}
-                  placeholder="write a description"
+                  placeholder="Enter product description"
                   className="form-control"
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
-
               <div className="mb-3">
                 <input
                   type="number"
                   value={price}
-                  placeholder="write a Price"
+                  placeholder="Enter product price"
                   className="form-control"
                   onChange={(e) => setPrice(e.target.value)}
                 />
@@ -144,7 +163,7 @@ const CreateProduct = () => {
                 <input
                   type="number"
                   value={quantity}
-                  placeholder="write a quantity"
+                  placeholder="Enter product quantity"
                   className="form-control"
                   onChange={(e) => setQuantity(e.target.value)}
                 />
@@ -152,7 +171,7 @@ const CreateProduct = () => {
               <div className="mb-3">
                 <Select
                   bordered={false}
-                  placeholder="Select Shipping "
+                  placeholder="Select Shipping"
                   size="large"
                   showSearch
                   className="form-select mb-3"
@@ -165,7 +184,11 @@ const CreateProduct = () => {
                 </Select>
               </div>
               <div className="mb-3">
-                <button className="btn btn-primary" onClick={handleCreate}>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCreate}
+                  disabled={!name || !description || !price || !quantity || !category || !shipping || !photo}
+                >
                   CREATE PRODUCT
                 </button>
               </div>

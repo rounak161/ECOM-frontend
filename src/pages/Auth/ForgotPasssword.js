@@ -1,41 +1,50 @@
 import React, { useState } from "react";
 import Layout from "./../../components/Layout/Layout";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import "../../styles/AuthStyles.css";
 
-const ForgotPasssword = () => {
+const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [answer, setAnswer] = useState("");
-
   const navigate = useNavigate();
 
-  // form function
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await axios.post("/api/v1/auth/forgot-password", {
-        email,
-        newPassword,
-        answer,
-      });
-      if (res && res.data.success) {
-        toast.success(res.data && res.data.message);
 
+    // Simple client-side validation
+    if (!email || !newPassword || !answer) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/v1/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, newPassword, answer }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success(data.message);
         navigate("/login");
       } else {
-        toast.error(res.data.message);
+        toast.error(data.message || "Password reset failed");
       }
     } catch (error) {
-      console.log(error);
+      console.error("Password reset error:", error);
       toast.error("Something went wrong");
     }
   };
+
   return (
     <Layout title={"Forgot Password - Ecommerce APP"}>
-      <div className="form-container ">
+      <div className="form-container">
         <form onSubmit={handleSubmit}>
           <h4 className="title">RESET PASSWORD</h4>
 
@@ -46,7 +55,7 @@ const ForgotPasssword = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="form-control"
               id="exampleInputEmail1"
-              placeholder="Enter Your Email "
+              placeholder="Enter Your Email"
               required
             />
           </div>
@@ -56,8 +65,8 @@ const ForgotPasssword = () => {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               className="form-control"
-              id="exampleInputEmail1"
-              placeholder="Enter Your favorite Sport Name "
+              id="exampleInputAnswer"
+              placeholder="Enter Your favorite Sport Name"
               required
             />
           </div>
@@ -68,7 +77,7 @@ const ForgotPasssword = () => {
               onChange={(e) => setNewPassword(e.target.value)}
               className="form-control"
               id="exampleInputPassword1"
-              placeholder="Enter Your Password"
+              placeholder="Enter Your New Password"
               required
             />
           </div>
@@ -82,4 +91,4 @@ const ForgotPasssword = () => {
   );
 };
 
-export default ForgotPasssword;
+export default ForgotPassword;

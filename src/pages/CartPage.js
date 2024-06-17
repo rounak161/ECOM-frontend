@@ -4,7 +4,6 @@ import { useCart } from "../context/cart";
 import { useAuth } from "../context/auth";
 import { useNavigate } from "react-router-dom";
 import DropIn from "braintree-web-drop-in-react";
-import { AiFillWarning } from "react-icons/ai";
 import axios from "axios";
 import toast from "react-hot-toast";
 import "../styles/CartStyles.css";
@@ -17,12 +16,12 @@ const CartPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  //total price
+  // Function to calculate total price of items in cart
   const totalPrice = () => {
     try {
       let total = 0;
-      cart?.map((item) => {
-        total = total + item.price;
+      cart?.forEach((item) => {
+        total += item.price;
       });
       return total.toLocaleString("en-US", {
         style: "currency",
@@ -32,21 +31,20 @@ const CartPage = () => {
       console.log(error);
     }
   };
-  //detele item
-  const removeCartItem = (pid) => {
+
+  // Function to remove an item from cart
+  const removeCartItem = (productId) => {
     try {
-      let myCart = [...cart];
-      let index = myCart.findIndex((item) => item._id === pid);
-      myCart.splice(index, 1);
-      setCart(myCart);
-      localStorage.setItem("cart", JSON.stringify(myCart));
+      let updatedCart = cart.filter((item) => item._id !== productId);
+      setCart(updatedCart);
+      localStorage.setItem("cart", JSON.stringify(updatedCart));
     } catch (error) {
       console.log(error);
     }
   };
 
-  //get payment gateway token
-  const getToken = async () => {
+  // Function to fetch Braintree client token
+  const getClientToken = async () => {
     try {
       const { data } = await axios.get("/api/v1/product/braintree/token");
       setClientToken(data?.clientToken);
@@ -54,11 +52,12 @@ const CartPage = () => {
       console.log(error);
     }
   };
-  useEffect(() => {
-    getToken();
-  }, [auth?.token]);
 
-  //handle payments
+  useEffect(() => {
+    getClientToken();
+  }, [auth?.token]); // Fetch token when auth token changes
+
+  // Function to handle payment
   const handlePayment = async () => {
     try {
       setLoading(true);
@@ -71,54 +70,56 @@ const CartPage = () => {
       localStorage.removeItem("cart");
       setCart([]);
       navigate("/dashboard/user/orders");
-      toast.success("Payment Completed Successfully ");
+      toast.success("Payment Completed Successfully");
     } catch (error) {
       console.log(error);
       setLoading(false);
+      toast.error("Payment failed. Please try again.");
     }
   };
+
   return (
     <Layout>
-      <div className=" cart-page">
+      <div className="cart-page">
         <div className="row">
           <div className="col-md-12">
             <h1 className="text-center bg-light p-2 mb-1">
               {!auth?.user
                 ? "Hello Guest"
-                : `Hello  ${auth?.token && auth?.user?.name}`}
+                : `Hello ${auth?.user?.name}`}
               <p className="text-center">
                 {cart?.length
-                  ? `You Have ${cart.length} items in your cart ${
-                      auth?.token ? "" : "please login to checkout !"
+                  ? `You have ${cart.length} items in your cart ${
+                      auth?.token ? "" : ", please login to checkout!"
                     }`
-                  : " Your Cart Is Empty"}
+                  : "Your cart is empty"}
               </p>
             </h1>
           </div>
         </div>
-        <div className="container ">
-          <div className="row ">
-            <div className="col-md-7  p-0 m-0">
-              {cart?.map((p) => (
-                <div className="row card flex-row" key={p._id}>
+        <div className="container">
+          <div className="row">
+            <div className="col-md-7">
+              {cart?.map((product) => (
+                <div className="row card flex-row" key={product._id}>
                   <div className="col-md-4">
                     <img
-                      src={`/api/v1/product/product-photo/${p._id}`}
+                      src={`/api/v1/product/product-photo/${product._id}`}
                       className="card-img-top"
-                      alt={p.name}
+                      alt={product.name}
                       width="100%"
-                      height={"130px"}
+                      height="130px"
                     />
                   </div>
                   <div className="col-md-4">
-                    <p>{p.name}</p>
-                    <p>{p.description.substring(0, 30)}</p>
-                    <p>Price : {p.price}</p>
+                    <p>{product.name}</p>
+                    <p>{product.description.substring(0, 30)}</p>
+                    <p>Price: {product.price}</p>
                   </div>
                   <div className="col-md-4 cart-remove-btn">
                     <button
                       className="btn btn-danger"
-                      onClick={() => removeCartItem(p._id)}
+                      onClick={() => removeCartItem(product._id)}
                     >
                       Remove
                     </button>
@@ -126,11 +127,11 @@ const CartPage = () => {
                 </div>
               ))}
             </div>
-            <div className="col-md-5 cart-summary ">
+            <div className="col-md-5 cart-summary">
               <h2>Cart Summary</h2>
               <p>Total | Checkout | Payment</p>
               <hr />
-              <h4>Total : {totalPrice()} </h4>
+              <h4>Total: {totalPrice()}</h4>
               {auth?.user?.address ? (
                 <>
                   <div className="mb-3">
@@ -162,7 +163,7 @@ const CartPage = () => {
                         })
                       }
                     >
-                      Plase Login to checkout
+                      Please login to checkout
                     </button>
                   )}
                 </div>
@@ -187,7 +188,7 @@ const CartPage = () => {
                       onClick={handlePayment}
                       disabled={loading || !instance || !auth?.user?.address}
                     >
-                      {loading ? "Processing ...." : "Make Payment"}
+                      {loading ? "Processing ..." : "Make Payment"}
                     </button>
                   </>
                 )}
